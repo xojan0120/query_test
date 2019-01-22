@@ -33,19 +33,30 @@ RSpec.describe User, type: :model do
   end
 
   ActiveRecord::Base.logger = Logger.new(STDOUT)
-  fit "N+1クエリ問題" do
+  it "N+1クエリ問題" do
     comments = Comment.limit(3)
 
+    # 次のeachのときにSELECT  "comments".* FROM "comments" が発行され、commentsテーブルが取得される
     comments.each do |comment|
+      # 次のcomment.user.nameで、commentsテーブルから取得したuser_idを1個ずつ使用して、3回SELECT文が発行される
+      # SELECT  "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 1], ["LIMIT", 1]]
+      # SELECT  "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 1], ["LIMIT", 1]]
+      # SELECT  "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 2], ["LIMIT", 1]]
       puts comment.user.name
     end
+
+    # 上記で合計4回のSQL発行になる
   end
 
-  fit "N+1クエリ問題回避法" do
+  it "N+1クエリ問題回避法" do
     comments = Comment.includes(:user).limit(3)
 
+    # 次のeachのときにSELECT  "comments".* FROM "comments" が発行され、commentsテーブルが取得される
     comments.each do |comment|
+      # 次でSELECT "users".* FROM "users" WHERE "users"."id" IN (1, 2)が発行される
       puts comment.user.name
     end
+
+    # 上記で合計2回のSQL発行になる
   end
 end
